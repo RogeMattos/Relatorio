@@ -46,6 +46,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ trip, existingExpense, onClos
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Common input classes for styling consistency
+  const INPUT_CLASS = "w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-shadow";
+
   // Utility to resize image to prevent huge payload to Gemini
   const resizeImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -213,7 +216,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ trip, existingExpense, onClos
           {/* Form Fields */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label className="label">{t('date')}</label>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('date')}</label>
               <input
                 type="date"
                 required
@@ -222,52 +225,52 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ trip, existingExpense, onClos
                     setFormData(p => ({...p, date: e.target.value}));
                     updateRate(formData.currencyOriginal as string, e.target.value);
                 }}
-                className="input-field"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="col-span-2 sm:col-span-1">
-                <label className="label">{t('category')}</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('category')}</label>
                 <select 
                     value={formData.category}
                     onChange={e => setFormData(p => ({...p, category: e.target.value as ExpenseCategory}))}
-                    className="input-field"
+                    className={INPUT_CLASS}
                 >
                     {Object.values(ExpenseCategory).map(c => <option key={c} value={c}>{t(c)}</option>)}
                 </select>
             </div>
 
             <div className="col-span-2">
-                <label className="label">{t('merchant')}</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('merchant')}</label>
                 <input 
                     type="text" 
                     required
                     value={formData.merchant}
                     onChange={e => setFormData(p => ({...p, merchant: e.target.value}))}
                     placeholder="e.g. Starbucks"
-                    className="input-field"
+                    className={INPUT_CLASS}
                 />
             </div>
 
             <div className="col-span-1">
-                <label className="label">{t('amount')}</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('amount')}</label>
                 <input 
                     type="number" 
                     required
                     step="0.01"
                     value={formData.amountOriginal}
                     onChange={e => setFormData(p => ({...p, amountOriginal: parseFloat(e.target.value)}))}
-                    className="input-field"
+                    className={INPUT_CLASS}
                 />
             </div>
             <div className="col-span-1">
-                <label className="label">{t('currency')}</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('currency')}</label>
                 <div className="flex items-center gap-1">
                     <input 
                         type="text" 
                         value={formData.currencyOriginal}
                         onChange={e => setFormData(p => ({...p, currencyOriginal: e.target.value.toUpperCase()}))}
                         onBlur={() => updateRate(formData.currencyOriginal as string, formData.date as string)}
-                        className="input-field uppercase"
+                        className={`${INPUT_CLASS} uppercase`}
                         placeholder="USD"
                     />
                 </div>
@@ -300,11 +303,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ trip, existingExpense, onClos
             </div>
             
              <div className="col-span-2">
-                <label className="label">{t('paymentMethod')}</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{t('paymentMethod')}</label>
                 <select 
                     value={formData.paymentMethod}
                     onChange={e => setFormData(p => ({...p, paymentMethod: e.target.value as PaymentMethod}))}
-                    className="input-field"
+                    className={INPUT_CLASS}
                 >
                     {Object.values(PaymentMethod).map(m => <option key={m} value={m}>{t(m)}</option>)}
                 </select>
@@ -323,8 +326,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ trip, existingExpense, onClos
       
       {/* Styles */}
       <style>{`
-        .label { @apply block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide; }
-        .input-field { @apply w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-shadow; }
         @keyframes slide-up {
             from { transform: translateY(100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
