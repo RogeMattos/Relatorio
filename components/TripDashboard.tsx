@@ -384,35 +384,48 @@ const TripDashboard: React.FC = () => {
                                     <th className="py-2">{t('merchant')}</th>
                                     <th className="py-2">{t('category')}</th>
                                     <th className="py-2 text-right">Original</th>
-                                    <th className="py-2 text-right">Rate</th>
                                     <th className="py-2 text-right">Total ({trip.baseCurrency})</th>
+                                    <th className="py-2 text-center">{t('receipt')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {expenses.map(e => (
-                                    <tr key={e.id} className="border-b border-gray-300">
+                                    <tr key={e.id} className="border-b border-gray-300 break-inside-avoid">
                                         <td className="py-2">{e.date}</td>
                                         <td className="py-2">{e.merchant}</td>
                                         <td className="py-2">{t(e.category)}</td>
                                         <td className="py-2 text-right">{e.amountOriginal} {e.currencyOriginal}</td>
-                                        <td className="py-2 text-right">{e.exchangeRate.toFixed(4)}</td>
                                         <td className="py-2 text-right font-medium">{formatMoney(e.amountBase, trip.baseCurrency)}</td>
+                                        <td className="py-2 text-center">
+                                            {e.receiptImage ? (
+                                                <img 
+                                                    src={e.receiptImage} 
+                                                    alt="Receipt" 
+                                                    className="h-16 w-auto object-contain mx-auto border border-gray-200"
+                                                />
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                                 <tr className="font-bold border-t-2 border-black bg-gray-50">
-                                    <td colSpan={5} className="py-3 text-right pr-4">{t('total')}</td>
+                                    <td colSpan={4} className="py-3 text-right pr-4">{t('total')}</td>
                                     <td className="py-3 text-right">{formatMoney(totalSpent, trip.baseCurrency)}</td>
+                                    <td></td>
                                 </tr>
                                 {/* Settlement Section on Print */}
                                 <tr className="font-bold">
-                                    <td colSpan={5} className="py-2 text-right pr-4">{t('budget')}</td>
+                                    <td colSpan={4} className="py-2 text-right pr-4">{t('budget')}</td>
                                     <td className="py-2 text-right">{formatMoney(trip.advanceAmount, trip.baseCurrency)}</td>
+                                    <td></td>
                                 </tr>
                                 <tr className="font-bold text-lg">
-                                    <td colSpan={5} className="py-3 text-right pr-4 border-t border-gray-300">
+                                    <td colSpan={4} className="py-3 text-right pr-4 border-t border-gray-300">
                                         {t('settlement')} ({balance >= 0 ? t('toReturn') : t('toReimburse')})
                                     </td>
                                     <td className="py-3 text-right border-t border-gray-300">{formatMoney(Math.abs(balance), trip.baseCurrency)}</td>
+                                    <td className="border-t border-gray-300"></td>
                                 </tr>
                             </tbody>
                         </table>

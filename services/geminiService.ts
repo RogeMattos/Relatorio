@@ -1,10 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { OCRResult, Currency, ExpenseCategory } from "../types";
 
-// Initialize Gemini Client with Vite Env Var safely
-// using optional chaining to prevent crashes if import.meta.env is undefined
-const apiKey = import.meta.env?.VITE_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Helper to get API Key safely at runtime
+const getApiKey = () => import.meta.env?.VITE_API_KEY || '';
 
 /**
  * Helper function to retry operations on 503 (Overloaded) errors
@@ -77,7 +75,10 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
 export const analyzeReceipt = async (base64Image: string): Promise<OCRResult> => {
   return retryOperation(async () => {
       try {
-        if (!apiKey) throw new Error("API Key missing");
+        const apiKey = getApiKey();
+        if (!apiKey) throw new Error("API Key missing. Please check VITE_API_KEY in your .env file or settings.");
+
+        const ai = new GoogleGenAI({ apiKey });
 
         // Clean base64 string if it includes the data prefix
         const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
@@ -164,7 +165,7 @@ export const analyzeReceipt = async (base64Image: string): Promise<OCRResult> =>
 
         if (error.message) {
              // If it's a custom error from above, rethrow it
-             if (error.message.includes("Quota") || error.message.includes("valid JSON")) {
+             if (error.message.includes("Quota") || error.message.includes("valid JSON") || error.message.includes("API Key")) {
                  throw error;
              }
              throw new Error(`AI Analysis failed: ${error.message}`);
@@ -181,7 +182,9 @@ export const analyzeReceipt = async (base64Image: string): Promise<OCRResult> =>
 export const getEstimatedExchangeRate = async (fromCurrency: string, toCurrency: string, date: string): Promise<number> => {
   if (fromCurrency === toCurrency) return 1;
   
-  // Simple static fallback for common pairs if API fails (simplified for demo robustness)
+  const apiKey = getApiKey();
+
+  // Simple static fallback for common pairs if API fails or Key is missing
   if (!apiKey) {
       const pair = `${fromCurrency}-${toCurrency}`;
       if (pair === 'USD-BRL') return 5.0;
@@ -195,6 +198,7 @@ export const getEstimatedExchangeRate = async (fromCurrency: string, toCurrency:
 
   return retryOperation(async () => {
       try {
+        const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: `What was the exchange rate from ${fromCurrency} to ${toCurrency} on ${date}? 
@@ -235,8 +239,10 @@ export const suggestCurrencyForCountry = async (country: string): Promise<string
     // 2. If not in map, try Gemini API
     return retryOperation(async () => {
         try {
+            const apiKey = getApiKey();
             if (!apiKey) throw new Error("No API Key");
 
+            const ai = new GoogleGenAI({ apiKey });
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: `What is the 3-letter ISO currency code for ${country}? Return JSON { "currency": "CODE" }`,
