@@ -1,0 +1,7 @@
+{
+  "name": "Voyage Expense AI",
+  "description": "Intelligent travel expense manager with OCR receipt scanning and automatic currency conversion using Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
