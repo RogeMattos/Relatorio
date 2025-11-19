@@ -37,6 +37,7 @@ const TripWizard: React.FC = () => {
     baseCurrency: Currency.USD,
     localCurrencySuggestion: '',
     initialExchangeRate: 1,
+    advanceAmount: undefined, // Initialize as undefined to show placeholder
   });
 
   const handleChange = (field: keyof Trip, value: any) => {
@@ -91,8 +92,14 @@ const TripWizard: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.tripName && formData.advanceAmount) {
-      saveTrip(formData as Trip);
+    // Changed: validation no longer requires advanceAmount to be truthy
+    if (formData.tripName) {
+      const finalTrip = {
+          ...formData,
+          // Default to 0 if empty/undefined
+          advanceAmount: formData.advanceAmount || 0 
+      };
+      saveTrip(finalTrip as Trip);
       navigate(`/trip/${formData.id}`);
     }
   };
@@ -190,7 +197,7 @@ const TripWizard: React.FC = () => {
                 <div className="relative">
                     <Wallet className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
                     <input
-                    required
+                    /* Removed 'required' attribute to make it optional */
                     type="number"
                     min="0"
                     step="0.01"
