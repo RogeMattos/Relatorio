@@ -29,6 +29,7 @@ const TripWizard: React.FC = () => {
   const [loadingRate, setLoadingRate] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [isManualRate, setIsManualRate] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Trip>>({
     id: generateUUID(),
@@ -37,7 +38,7 @@ const TripWizard: React.FC = () => {
     baseCurrency: Currency.USD,
     localCurrencySuggestion: '',
     initialExchangeRate: 1,
-    advanceAmount: undefined, // Initialize as undefined to show placeholder
+    advanceAmount: undefined, 
   });
 
   const handleChange = (field: keyof Trip, value: any) => {
@@ -65,7 +66,6 @@ const TripWizard: React.FC = () => {
         }
 
         // If user manually set the rate, do not overwrite unless currencies changed substantially 
-        // (simplified here: manual override sticks until reset or manual change)
         if (isManualRate) return;
 
         setLoadingRate(true);
@@ -90,17 +90,23 @@ const TripWizard: React.FC = () => {
       setFormData(prev => ({ ...prev, initialExchangeRate: rate }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Changed: validation no longer requires advanceAmount to be truthy
     if (formData.tripName) {
+      setIsSaving(true);
       const finalTrip = {
           ...formData,
           // Default to 0 if empty/undefined
           advanceAmount: formData.advanceAmount || 0 
       };
-      saveTrip(finalTrip as Trip);
-      navigate(`/trip/${formData.id}`);
+      try {
+        await saveTrip(finalTrip as Trip);
+        navigate(`/trip/${formData.id}`);
+      } catch (error) {
+          console.error("Failed to save trip", error);
+          alert("Failed to create trip. Please try again.");
+          setIsSaving(false);
+      }
     }
   };
 
@@ -197,7 +203,6 @@ const TripWizard: React.FC = () => {
                 <div className="relative">
                     <Wallet className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
                     <input
-                    /* Removed 'required' attribute to make it optional */
                     type="number"
                     min="0"
                     step="0.01"
@@ -253,9 +258,10 @@ const TripWizard: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-4 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            disabled={isSaving}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-4 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
           >
-            {t('startNewTrip')} <ArrowRight className="w-5 h-5" />
+            {isSaving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><span className="mr-1">{t('startNewTrip')}</span> <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
       </div>

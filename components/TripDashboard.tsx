@@ -23,54 +23,70 @@ const TripDashboard: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
   // Manual Rate Editing State
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [tempRate, setTempRate] = useState<number>(1);
 
   useEffect(() => {
-    const trips = getTrips();
-    const found = trips.find(t => t.id === id);
-    if (!found) {
-        navigate('/');
-        return;
-    }
-    setTrip(found);
-    setTempRate(found.initialExchangeRate || 1);
-    refreshExpenses();
+    const loadData = async () => {
+        if (!id) return;
+        try {
+            const trips = await getTrips();
+            const found = trips.find(t => t.id === id);
+            if (!found) {
+                navigate('/');
+                return;
+            }
+            setTrip(found);
+            setTempRate(found.initialExchangeRate || 1);
+            
+            const expData = await getExpenses(id);
+            setExpenses(expData);
+        } catch (err) {
+            console.error("Failed to load trip data", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    loadData();
   }, [id, navigate]);
 
-  const refreshExpenses = () => {
-      if (id) setExpenses(getExpenses(id));
+  const refreshExpenses = async () => {
+      if (id) {
+          const data = await getExpenses(id);
+          setExpenses(data);
+      }
   };
 
-  const handleSaveExpense = (expense: Expense) => {
-      saveExpense(expense);
-      refreshExpenses();
+  const handleSaveExpense = async (expense: Expense) => {
+      await saveExpense(expense);
+      await refreshExpenses();
       setShowModal(false);
       setEditingExpense(undefined);
   };
   
-  const handleDelete = (eId: string) => {
+  const handleDelete = async (eId: string) => {
       if(window.confirm(t('deleteConfirm'))) {
-          deleteExpense(eId);
-          refreshExpenses();
+          await deleteExpense(eId);
+          await refreshExpenses();
       }
   }
 
-  const handleToggleTripStatus = () => {
+  const handleToggleTripStatus = async () => {
       if (!trip) return;
       const newStatus: 'active' | 'closed' = trip.status === 'active' ? 'closed' : 'active';
       const updatedTrip = { ...trip, status: newStatus };
-      saveTrip(updatedTrip);
+      await saveTrip(updatedTrip);
       setTrip(updatedTrip);
       setShowCloseConfirm(false);
   };
 
-  const handleSaveRate = () => {
+  const handleSaveRate = async () => {
       if (!trip) return;
       const updatedTrip = { ...trip, initialExchangeRate: tempRate };
-      saveTrip(updatedTrip);
+      await saveTrip(updatedTrip);
       setTrip(updatedTrip);
       setIsEditingRate(false);
   };
@@ -99,14 +115,12 @@ const TripDashboard: React.FC = () => {
   const handleExportCSV = () => {
       if (!trip) return;
 
-      // Helper to safely escape fields for CSV (wraps in quotes, handles existing quotes)
       const escape = (value: string | number | undefined | null) => {
           if (value === undefined || value === null) return '""';
           const stringValue = String(value);
           return `"${stringValue.replace(/"/g, '""')}"`;
       };
 
-      // Helper to format numbers with commas for Excel (PT-BR/EU standard when using semicolon sep)
       const formatDecimal = (num: number) => {
           return `"${num.toFixed(2).replace('.', ',')}"`;
       };
@@ -114,7 +128,6 @@ const TripDashboard: React.FC = () => {
           return `"${num.toFixed(6).replace('.', ',')}"`;
       };
 
-      // 1. Metadata Section (Trip Info)
       const metadata = [
           [t('tripName'), trip.tripName],
           [t('travelerName'), trip.travelerName],
@@ -126,10 +139,8 @@ const TripDashboard: React.FC = () => {
           [t('settlement'), formatDecimal(balance)]
       ];
 
-      // Use semicolon for Excel compatibility
       const metadataRows = metadata.map(row => row.map(escape).join(';')).join('\n');
 
-      // 2. Table Headers
       const headers = [
           t('date'),
           t('category'),
@@ -143,7 +154,6 @@ const TripDashboard: React.FC = () => {
       ];
       const headerRow = headers.map(escape).join(';');
 
-      // 3. Expense Rows
       const expenseRows = expenses.map(e => [
           escape(e.date),
           escape(t(e.category)),
@@ -156,7 +166,6 @@ const TripDashboard: React.FC = () => {
           escape(e.notes || '')
       ].join(';')).join('\n');
 
-      // 4. Construct Final CSV with BOM (\uFEFF) AND sep=; header for Excel
       const csvContent = `sep=;\n\uFEFF${metadataRows}\n\n${headerRow}\n${expenseRows}`;
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -170,7 +179,7 @@ const TripDashboard: React.FC = () => {
       document.body.removeChild(link);
   };
 
-  if (!trip) return (
+  if (loading || !trip) return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
@@ -228,6 +237,20 @@ const TripDashboard: React.FC = () => {
                     <p><strong>{t('traveler')}:</strong> {trip.travelerName}</p>
                     <p><strong>{t('dates')}:</strong> {trip.startDate} - Current</p>
                     <p><strong>{t('generated')}:</strong> {new Date().toLocaleDateString()}</p>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+                    <div>
+                         <p className="text-xs font-bold uppercase text-gray-500">{t('budget')}</p>
+                         <p className="text-xl font-bold">{formatMoney(trip.advanceAmount, trip.baseCurrency)}</p>
+                    </div>
+                    <div>
+                         <p className="text-xs font-bold uppercase text-gray-500">{t('spent')}</p>
+                         <p className="text-xl font-bold text-blue-600">{formatMoney(totalSpent, trip.baseCurrency)}</p>
+                    </div>
+                    <div>
+                         <p className="text-xs font-bold uppercase text-gray-500">{t('settlement')}</p>
+                         <p className={`text-xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatMoney(Math.abs(balance), trip.baseCurrency)} <span className="text-xs font-normal text-gray-500">({balance >= 0 ? t('toReturn') : t('toReimburse')})</span></p>
+                    </div>
                 </div>
             </div>
 
@@ -337,7 +360,7 @@ const TripDashboard: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        {/* Screen View */}
+                        {/* Screen View (Interactable) */}
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 divide-y dark:divide-gray-700 transition-colors print:hidden">
                             {expenses.map((expense) => (
                                 <div 
@@ -376,59 +399,40 @@ const TripDashboard: React.FC = () => {
                             ))}
                         </div>
 
-                        {/* Print-only Table - Enhanced for PDF */}
-                        <table className="hidden print:table w-full text-left text-sm mt-4 border-collapse text-black">
-                            <thead>
-                                <tr className="border-b-2 border-black">
-                                    <th className="py-2">{t('date')}</th>
-                                    <th className="py-2">{t('merchant')}</th>
-                                    <th className="py-2">{t('category')}</th>
-                                    <th className="py-2 text-right">Original</th>
-                                    <th className="py-2 text-right">Total ({trip.baseCurrency})</th>
-                                    <th className="py-2 text-center">{t('receipt')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {expenses.map(e => (
-                                    <tr key={e.id} className="border-b border-gray-300 break-inside-avoid">
-                                        <td className="py-2">{e.date}</td>
-                                        <td className="py-2">{e.merchant}</td>
-                                        <td className="py-2">{t(e.category)}</td>
-                                        <td className="py-2 text-right">{e.amountOriginal} {e.currencyOriginal}</td>
-                                        <td className="py-2 text-right font-medium">{formatMoney(e.amountBase, trip.baseCurrency)}</td>
-                                        <td className="py-2 text-center">
-                                            {e.receiptImage ? (
-                                                <img 
-                                                    src={e.receiptImage} 
-                                                    alt="Receipt" 
-                                                    className="h-16 w-auto object-contain mx-auto border border-gray-200"
-                                                />
-                                            ) : (
-                                                <span className="text-gray-400">-</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                                <tr className="font-bold border-t-2 border-black bg-gray-50">
-                                    <td colSpan={4} className="py-3 text-right pr-4">{t('total')}</td>
-                                    <td className="py-3 text-right">{formatMoney(totalSpent, trip.baseCurrency)}</td>
-                                    <td></td>
-                                </tr>
-                                {/* Settlement Section on Print */}
-                                <tr className="font-bold">
-                                    <td colSpan={4} className="py-2 text-right pr-4">{t('budget')}</td>
-                                    <td className="py-2 text-right">{formatMoney(trip.advanceAmount, trip.baseCurrency)}</td>
-                                    <td></td>
-                                </tr>
-                                <tr className="font-bold text-lg">
-                                    <td colSpan={4} className="py-3 text-right pr-4 border-t border-gray-300">
-                                        {t('settlement')} ({balance >= 0 ? t('toReturn') : t('toReimburse')})
-                                    </td>
-                                    <td className="py-3 text-right border-t border-gray-300">{formatMoney(Math.abs(balance), trip.baseCurrency)}</td>
-                                    <td className="border-t border-gray-300"></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        {/* PRINT VIEW: Detailed Card List with Images */}
+                        <div className="hidden print:flex flex-col space-y-4">
+                            {expenses.map(e => (
+                                <div key={e.id} className="border border-gray-300 rounded-lg p-4 flex break-inside-avoid page-break-inside-avoid">
+                                    {/* Left: Details */}
+                                    <div className="flex-1 pr-4">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="font-bold text-lg">{e.merchant}</span>
+                                            <span className="font-bold text-lg">{formatMoney(e.amountBase, trip.baseCurrency)}</span>
+                                        </div>
+                                        <div className="text-sm text-gray-600 space-y-1">
+                                            <p><strong>{t('date')}:</strong> {e.date}</p>
+                                            <p><strong>{t('category')}:</strong> {t(e.category)}</p>
+                                            <p><strong>Original:</strong> {e.amountOriginal} {e.currencyOriginal} (Rate: {e.exchangeRate})</p>
+                                            <p><strong>Method:</strong> {t(e.paymentMethod)}</p>
+                                            {e.notes && <p><strong>Notes:</strong> {e.notes}</p>}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Right: Receipt Image */}
+                                    <div className="w-1/3 flex items-center justify-center border-l pl-4 border-gray-200">
+                                        {e.receiptImage ? (
+                                            <img 
+                                                src={e.receiptImage} 
+                                                alt="Receipt" 
+                                                className="max-h-40 object-contain max-w-full" 
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">No Receipt</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </>
                 )}
             </div>

@@ -9,10 +9,21 @@ const TripList: React.FC = () => {
   const navigate = useNavigate();
   const { t, theme, toggleTheme, language, setLanguage } = useSettings();
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    setTrips(getTrips());
+    const fetchTrips = async () => {
+        try {
+            const data = await getTrips();
+            setTrips(data);
+        } catch (error) {
+            console.error("Failed to load trips", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchTrips();
   }, []);
 
   return (
@@ -32,7 +43,11 @@ const TripList: React.FC = () => {
           </button>
         </div>
 
-        {trips.length === 0 ? (
+        {loading ? (
+             <div className="flex justify-center py-10">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+             </div>
+        ) : trips.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-10 text-center shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
             <div className="bg-blue-50 dark:bg-blue-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                <Briefcase className="w-8 h-8 text-blue-500 dark:text-blue-400" />
@@ -67,7 +82,7 @@ const TripList: React.FC = () => {
           </div>
         )}
         
-        {trips.length > 0 && (
+        {!loading && trips.length > 0 && (
              <button 
                 onClick={() => navigate('/new-trip')}
                 className="fixed bottom-6 right-6 bg-gray-900 dark:bg-blue-600 text-white p-4 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all z-40"

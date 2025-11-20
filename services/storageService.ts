@@ -1,50 +1,108 @@
 import { Trip, Expense } from "../types";
 
-const TRIPS_KEY = "voyage_trips";
-const EXPENSES_KEY = "voyage_expenses";
+const DB_NAME = "VoyageExpenseDB";
+const DB_VERSION = 1;
+const TRIPS_STORE = "trips";
+const EXPENSES_STORE = "expenses";
 
-export const getTrips = (): Trip[] => {
-  const data = localStorage.getItem(TRIPS_KEY);
-  return data ? JSON.parse(data) : [];
+// Helper to open Database
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(TRIPS_STORE)) {
+        db.createObjectStore(TRIPS_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(EXPENSES_STORE)) {
+        const expenseStore = db.createObjectStore(EXPENSES_STORE, { keyPath: "id" });
+        expenseStore.createIndex("tripId", "tripId", { unique: false });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      resolve((event.target as IDBOpenDBRequest).result);
+    };
+
+    request.onerror = (event) => {
+      reject((event.target as IDBOpenDBRequest).error);
+    };
+  });
 };
 
-export const saveTrip = (trip: Trip) => {
-  const trips = getTrips();
-  const existingIndex = trips.findIndex(t => t.id === trip.id);
-  if (existingIndex >= 0) {
-    trips[existingIndex] = trip;
-  } else {
-    trips.push(trip);
-  }
-  localStorage.setItem(TRIPS_KEY, JSON.stringify(trips));
+// Generic transaction helper
+const performTransaction = <T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  callback: (store: IDBObjectStore) => IDBRequest | void
+): Promise<T> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await openDB();
+      const transaction = db.transaction(storeName, mode);
+      const store = transaction.objectStore(storeName);
+      
+      let request: IDBRequest | void;
+      
+      try {
+          request = callback(store);
+      } catch (err) {
+          reject(err);
+          return;
+      }
+
+      transaction.oncomplete = () => {
+        if (request) {
+            resolve(request.result as T);
+        } else {
+            resolve(undefined as unknown as T);
+        }
+      };
+
+      transaction.onerror = () => reject(transaction.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
-export const getExpenses = (tripId: string): Expense[] => {
-  const data = localStorage.getItem(EXPENSES_KEY);
-  const allExpenses: Expense[] = data ? JSON.parse(data) : [];
-  return allExpenses.filter(e => e.tripId === tripId);
+// --- Trips Operations ---
+
+export const getTrips = async (): Promise<Trip[]> => {
+  return performTransaction<Trip[]>(TRIPS_STORE, "readonly", (store) => store.getAll());
 };
 
-export const saveExpense = (expense: Expense) => {
-  const data = localStorage.getItem(EXPENSES_KEY);
-  const allExpenses: Expense[] = data ? JSON.parse(data) : [];
-  
-  const existingIndex = allExpenses.findIndex(e => e.id === expense.id);
-  if (existingIndex >= 0) {
-    allExpenses[existingIndex] = expense;
-  } else {
-    allExpenses.push(expense);
-  }
-  localStorage.setItem(EXPENSES_KEY, JSON.stringify(allExpenses));
+export const saveTrip = async (trip: Trip): Promise<string> => {
+  return performTransaction<string>(TRIPS_STORE, "readwrite", (store) => store.put(trip));
 };
 
-export const deleteExpense = (expenseId: string) => {
-    const data = localStorage.getItem(EXPENSES_KEY);
-    if (!data) return;
-    const allExpenses: Expense[] = JSON.parse(data);
-    const filtered = allExpenses.filter(e => e.id !== expenseId);
-    localStorage.setItem(EXPENSES_KEY, JSON.stringify(filtered));
-}
+// --- Expenses Operations ---
+
+export const getExpenses = async (tripId: string): Promise<Expense[]> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+        const db = await openDB();
+        const transaction = db.transaction(EXPENSES_STORE, "readonly");
+        const store = transaction.objectStore(EXPENSES_STORE);
+        const index = store.index("tripId");
+        const request = index.getAll(tripId);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    } catch (e) {
+        reject(e);
+    }
+  });
+};
+
+export const saveExpense = async (expense: Expense): Promise<string> => {
+  return performTransaction<string>(EXPENSES_STORE, "readwrite", (store) => store.put(expense));
+};
+
+export const deleteExpense = async (expenseId: string): Promise<void> => {
+  return performTransaction<void>(EXPENSES_STORE, "readwrite", (store) => store.delete(expenseId));
+};
 
 export const formatMoney = (amount: number, currency: string) => {
   return new Intl.NumberFormat('en-US', {
