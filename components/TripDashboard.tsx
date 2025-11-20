@@ -399,6 +399,7 @@ const TripDashboard: React.FC = () => {
                             ))}
                         </div>
 
+<<<<<<< HEAD
                         {/* PRINT VIEW: Detailed Card List with Images */}
                         <div className="hidden print:flex flex-col space-y-4">
                             {expenses.map(e => (
@@ -433,6 +434,48 @@ const TripDashboard: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+=======
+                        {/* Print-only Table - Enhanced for PDF */}
+                        <table className="hidden print:table w-full text-left text-sm mt-4 border-collapse text-black">
+                            <thead>
+                                <tr className="border-b-2 border-black">
+                                    <th className="py-2">{t('date')}</th>
+                                    <th className="py-2">{t('merchant')}</th>
+                                    <th className="py-2">{t('category')}</th>
+                                    <th className="py-2 text-right">Original</th>
+                                    <th className="py-2 text-right">Rate</th>
+                                    <th className="py-2 text-right">Total ({trip.baseCurrency})</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {expenses.map(e => (
+                                    <tr key={e.id} className="border-b border-gray-300">
+                                        <td className="py-2">{e.date}</td>
+                                        <td className="py-2">{e.merchant}</td>
+                                        <td className="py-2">{t(e.category)}</td>
+                                        <td className="py-2 text-right">{e.amountOriginal} {e.currencyOriginal}</td>
+                                        <td className="py-2 text-right">{e.exchangeRate.toFixed(4)}</td>
+                                        <td className="py-2 text-right font-medium">{formatMoney(e.amountBase, trip.baseCurrency)}</td>
+                                    </tr>
+                                ))}
+                                <tr className="font-bold border-t-2 border-black bg-gray-50">
+                                    <td colSpan={5} className="py-3 text-right pr-4">{t('total')}</td>
+                                    <td className="py-3 text-right">{formatMoney(totalSpent, trip.baseCurrency)}</td>
+                                </tr>
+                                {/* Settlement Section on Print */}
+                                <tr className="font-bold">
+                                    <td colSpan={5} className="py-2 text-right pr-4">{t('budget')}</td>
+                                    <td className="py-2 text-right">{formatMoney(trip.advanceAmount, trip.baseCurrency)}</td>
+                                </tr>
+                                <tr className="font-bold text-lg">
+                                    <td colSpan={5} className="py-3 text-right pr-4 border-t border-gray-300">
+                                        {t('settlement')} ({balance >= 0 ? t('toReturn') : t('toReimburse')})
+                                    </td>
+                                    <td className="py-3 text-right border-t border-gray-300">{formatMoney(Math.abs(balance), trip.baseCurrency)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+>>>>>>> parent of 0b30466 (Fotos no PDF)
                     </>
                 )}
             </div>

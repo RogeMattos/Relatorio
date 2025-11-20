@@ -67,7 +67,6 @@ const translations = {
     traveler: "Traveler",
     dates: "Dates",
     total: "TOTAL",
-    receipt: "Receipt",
     // Trip Status
     active: "Active",
     closed: "Closed",
@@ -147,7 +146,6 @@ const translations = {
     traveler: "Viajante",
     dates: "Datas",
     total: "TOTAL",
-    receipt: "Comprovante",
     // Trip Status
     active: "Ativa",
     closed: "Fechada",

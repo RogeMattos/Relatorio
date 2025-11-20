@@ -1,6 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { OCRResult, Currency, ExpenseCategory } from "../types";
 
+<<<<<<< HEAD
+=======
+// Initialize Gemini Client with Vite Env Var safely
+// using optional chaining to prevent crashes if import.meta.env is undefined
+const apiKey = import.meta.env?.VITE_API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
+
+>>>>>>> parent of 0b30466 (Fotos no PDF)
 /**
  * Helper function to retry operations on 503 (Overloaded) errors
  */
@@ -72,8 +80,12 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
 export const analyzeReceipt = async (base64Image: string): Promise<OCRResult> => {
   return retryOperation(async () => {
       try {
+<<<<<<< HEAD
         // API Key must be obtained exclusively from process.env.API_KEY
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+=======
+        if (!apiKey) throw new Error("API Key missing");
+>>>>>>> parent of 0b30466 (Fotos no PDF)
 
         // Clean base64 string if it includes the data prefix
         const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
@@ -177,11 +189,28 @@ export const analyzeReceipt = async (base64Image: string): Promise<OCRResult> =>
 export const getEstimatedExchangeRate = async (fromCurrency: string, toCurrency: string, date: string): Promise<number> => {
   if (fromCurrency === toCurrency) return 1;
   
+<<<<<<< HEAD
   return retryOperation(async () => {
       try {
         // API Key must be obtained exclusively from process.env.API_KEY
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
+=======
+  // Simple static fallback for common pairs if API fails (simplified for demo robustness)
+  if (!apiKey) {
+      const pair = `${fromCurrency}-${toCurrency}`;
+      if (pair === 'USD-BRL') return 5.0;
+      if (pair === 'BRL-USD') return 0.2;
+      if (pair === 'EUR-BRL') return 5.5;
+      if (pair === 'BRL-EUR') return 0.18;
+      if (pair === 'USD-EUR') return 0.92;
+      if (pair === 'EUR-USD') return 1.09;
+      return 1.0;
+  }
+
+  return retryOperation(async () => {
+      try {
+>>>>>>> parent of 0b30466 (Fotos no PDF)
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: `What was the exchange rate from ${fromCurrency} to ${toCurrency} on ${date}? 
@@ -222,9 +251,14 @@ export const suggestCurrencyForCountry = async (country: string): Promise<string
     // 2. If not in map, try Gemini API
     return retryOperation(async () => {
         try {
+<<<<<<< HEAD
             // API Key must be obtained exclusively from process.env.API_KEY
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
+=======
+            if (!apiKey) throw new Error("No API Key");
+
+>>>>>>> parent of 0b30466 (Fotos no PDF)
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: `What is the 3-letter ISO currency code for ${country}? Return JSON { "currency": "CODE" }`,
